@@ -8,7 +8,7 @@ RUN dnf groupinstall -y "Development Tools"
 RUN dnf install -y git cmake python3-devel pybind11-devel  \
     libuuid-devel alsa-lib-devel pulseaudio-libs-devel libjpeg-devel \
     freeglut-devel doxygen python3-sphinx opus-devel libvpx-devel \
-    openjpeg2-devel lame-devel
+    openjpeg2-devel lame-devel qt5 qt5-devel
 RUN pip3 install sphinx_rtd_theme breathe opentimelineio
 
 # Local installs
@@ -91,13 +91,13 @@ RUN curl -LO  https://www.nasm.us/pub/nasm/releasebuilds/2.15.05/nasm-2.15.05.ta
     make install
 
 # YASM
-RUN dnf install -y yasm
-# RUN curl -LO  https://www.tortall.net/projects/yasm/releases/yasm-1.3.0.tar.gz && \
-#     tar -xf yasm-1.3.0.tar.gz && \
-#     cd yasm-1.3.0  && \
-#     ./configure --prefix="$HOME/ffmpeg_build" --bindir="$HOME/bin"  && \
-#     make -j  $(nproc) && \
-#     make install
+# RUN dnf install -y yasm
+RUN curl -LO  https://www.tortall.net/projects/yasm/releases/yasm-1.3.0.tar.gz && \
+    tar -xf yasm-1.3.0.tar.gz && \
+    cd yasm-1.3.0  && \
+    ./configure --prefix="$HOME/ffmpeg_build" --bindir="$HOME/bin"  && \
+    make -j  $(nproc) && \
+    make install
 
 # x264
 RUN git clone --branch stable --depth 1 https://code.videolan.org/videolan/x264.git && \
