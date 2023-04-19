@@ -1,0 +1,229 @@
+FROM centos:7
+
+ARG QT_EMAIL=none
+ARG QT_PASSWORD=none
+
+# Install required packages from distro
+RUN yum -y update
+RUN yum group install -y 'Development Tools'
+RUN yum -y install centos-release-scl
+RUN yum -y install devtoolset-9 alsa-lib-devel pulseaudio-libs-devel freeglut-devel \
+    python3-devel bzip2-devel freetype-devel zlib-devel libuuid-devel
+
+# Install Python packages
+RUN pip3 install --user pytest opentimelineio
+
+#### Force use of newer GCC
+RUN echo "source /opt/rh/devtoolset-9/enable" >> /etc/bashrc
+SHELL ["/bin/bash", "--login", "-c"]
+
+# Local installs
+WORKDIR /usr/local/src
+
+# QT 5.15.2
+COPY ../qt-unified-linux-x64-4.5.2-online.run .
+RUN yum -y install fontconfig xcb-util-wm xcb-util-image xcb-util-keysyms \
+        xcb-util-wm-devel xcb-util-renderutil-devel libxkbcommon-x11-devel && \
+    chmod +x qt-unified-linux-x64-4.5.2-online.run && \
+    ./qt-unified-linux-x64-4.5.2-online.run install qt.qt5.5152 \
+        --root /opt/Qt \
+        --auto-answer telemetry-question=No,AssociateCommonFiletypes=Yes,installationErrorWithCancel=Ignore \
+        --default-answer --accept-licenses --accept-obligations --confirm-command \
+        --email $QT_EMAIL --pw $QT_PASSWORD
+
+# Install OpenSSL
+RUN curl -LO https://github.com/openssl/openssl/archive/refs/tags/OpenSSL_1_1_1s.tar.gz && \
+    tar xf OpenSSL_1_1_1s.tar.gz && \
+    cd openssl-OpenSSL_1_1_1s && \
+    ./config && \
+    make -j $(nproc) && \
+    make install
+
+# Install CMake
+RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.25.1/cmake-3.25.1.tar.gz && \
+    tar xf cmake-3.25.1.tar.gz && \
+    cd cmake-3.25.1 && \
+    ./configure && \
+    gmake -j $(nproc) && \
+    gmake install
+
+# Install nlohmann/json
+RUN curl -LO https://github.com/nlohmann/json/archive/refs/tags/v3.7.3.tar.gz && \
+    tar xf v3.7.3.tar.gz && \
+    cd json-3.7.3 && \
+    mkdir build && \
+    cd build && \
+    cmake .. -DJSON_BuildTests=Off && \
+    make -j $(nproc) && \
+    make install && \
+    rm -rf json-3.7.3 v3.7.3.tar.gz
+
+# Install pybind11
+RUN curl -LO https://github.com/pybind/pybind11/archive/refs/tags/v2.6.2.tar.gz && \
+    tar xf v2.6.2.tar.gz && \
+    cd pybind11-2.6.2 && \
+    mkdir build && \
+    cd build && \
+    cmake .. && \
+    make -j $(nproc) && \
+    make install && \
+    rm -rf pybind11-2.6.2 v2.6.2.tar.gz
+
+# Install spdlog
+RUN curl -LO https://github.com/gabime/spdlog/archive/refs/tags/v1.9.2.tar.gz && \
+    tar xf v1.9.2.tar.gz && \
+    cd spdlog-1.9.2 && \
+    mkdir build && \
+    cd build && \
+    cmake .. -DSPDLOG_BUILD_SHARED=On && \
+    make -j $(nproc) && \
+    make install && \
+    rm -rf spdlog-1.9.2 v1.9.2.tar.gz
+
+# Install fmtlib
+RUN curl -LO https://github.com/fmtlib/fmt/archive/refs/tags/8.0.1.tar.gz && \
+    tar xf 8.0.1.tar.gz && \
+    cd fmt-8.0.1 && \
+    mkdir build && \
+    cd build && \
+    cmake .. -DCMAKE_POSITION_INDEPENDENT_CODE=1 -DFMT_DOC=Off -DFMT_TEST=Off && \
+    make -j $(nproc) && \
+    make install
+
+# Install OpenEXR
+RUN curl -LO https://github.com/AcademySoftwareFoundation/openexr/archive/refs/tags/v3.1.6.tar.gz && \
+    tar xf v3.1.6.tar.gz && \
+    cd openexr-3.1.6 && \
+    mkdir build && \
+    cd build && \
+    cmake .. -DOPENEXR_INSTALL_TOOLS=Off -DBUILD_TESTING=Off && \
+    make -j $(nproc) && \
+    make install
+
+# Install ActorFramework
+RUN curl -LO https://github.com/actor-framework/actor-framework/archive/refs/tags/0.18.4.tar.gz && \
+    tar -xf 0.18.4.tar.gz && \
+    cd actor-framework-0.18.4 && \
+    ./configure && \
+    cd build && \
+    make -j $(nproc) && \
+    make install
+
+# Install OCIO2
+RUN curl -LO https://github.com/AcademySoftwareFoundation/OpenColorIO/archive/refs/tags/v2.2.0.tar.gz && \
+    tar -xf v2.2.0.tar.gz && \
+    cd OpenColorIO-2.2.0/ && \
+    mkdir build && \
+    cd build && \
+    cmake -DOCIO_BUILD_APPS=OFF -DOCIO_BUILD_TESTS=OFF -DOCIO_BUILD_GPU_TESTS=OFF ../ && \
+    make -j $(nproc) && \
+    make install
+
+# Install libGLEW
+RUN curl -LO https://sourceforge.net/projects/glew/files/glew/2.1.0/glew-2.1.0.tgz && \
+    tar -xf glew-2.1.0.tgz && \
+    cd glew-2.1.0/ && \
+    make -j $(nproc) && \
+    make install
+
+# Install FFMPEG
+# Install NASM
+RUN curl -LO https://www.nasm.us/pub/nasm/releasebuilds/2.15.05/nasm-2.15.05.tar.bz2 && \
+    tar -xf nasm-2.15.05.tar.bz2 && \
+    cd nasm-2.15.05 && \
+    ./autogen.sh && \
+    ./configure && \
+    make -j $(nproc) && \
+    make install
+
+# Install YASM
+RUN curl -LO https://www.tortall.net/projects/yasm/releases/yasm-1.3.0.tar.gz && \
+    tar -xf yasm-1.3.0.tar.gz && \
+    cd yasm-1.3.0 && \
+    ./configure --prefix="$HOME/ffmpeg_build" --bindir="$HOME/bin" && \
+    make -j $(nproc) && \
+    make install
+
+# Install TurboJPEG
+RUN curl -LO https://github.com/libjpeg-turbo/libjpeg-turbo/archive/refs/tags/2.1.4.tar.gz && \
+    tar -xf 2.1.4.tar.gz && \
+    cd libjpeg-turbo-2.1.4 && \
+    mkdir build && \
+    cd build/ && \
+    cmake .. -DCMAKE_INSTALL_PREFIX=/usr/local && \
+    make -j $(nproc) && \
+    make install
+
+# x264
+RUN git clone --branch stable --depth 1 https://code.videolan.org/videolan/x264.git && \
+    cd x264/ && \
+    ./configure --enable-shared && \
+    make -j $(nproc) && \
+    make install
+
+# x265
+RUN curl -LO https://bitbucket.org/multicoreware/x265_git/downloads/x265_3.5.tar.gz && \
+    tar -xf x265_3.5.tar.gz && \
+    cd x265_3.5/build/linux/ && \
+    cmake -G "Unix Makefiles" ../../source && \
+    make -j $(nproc) && \
+    make install
+
+# LAME
+RUN curl -LO https://downloads.sourceforge.net/project/lame/lame/3.100/lame-3.100.tar.gz && \
+    tar -xf lame-3.100.tar.gz && \
+    cd lame-3.100 && \
+    ./configure --enable-nasm && \
+    make -j $(nproc) && \
+    make install
+
+# FDK-AAC
+RUN git clone --depth 1 https://github.com/mstorsjo/fdk-aac && \
+    cd fdk-aac && \
+    autoreconf -fiv && \
+    ./configure && \
+    make -j $(nproc) && \
+    make install
+
+# OPUS
+RUN curl -LO https://archive.mozilla.org/pub/opus/opus-1.3.1.tar.gz && \
+    tar xzvf opus-1.3.1.tar.gz && \
+    cd opus-1.3.1 && \
+    ./configure && \
+    make -j $(nproc) && \
+    make install
+
+# LIBVPX
+RUN git clone --depth 1 https://chromium.googlesource.com/webm/libvpx.git && \
+    cd libvpx && \
+    ./configure --enable-shared --disable-static --disable-examples --disable-unit-tests --enable-vp9-highbitdepth --as=yasm && \
+    make -j $(nproc) && \
+    make install
+
+# FFMPEG
+RUN curl -LO https://ffmpeg.org/releases/ffmpeg-5.1.tar.bz2 && \
+    tar -xf ffmpeg-5.1.tar.bz2 && \
+    cd ffmpeg-5.1/ && \
+    export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH && \
+    ./configure --extra-libs=-lpthread --extra-libs=-lm --enable-gpl --enable-libfdk_aac --enable-libfreetype --enable-libmp3lame --enable-libopus --enable-libvpx --enable-libx264 --enable-libx265 --enable-shared --enable-nonfree && \
+    make -j $(nproc) && \
+    make install
+
+# xStudio
+RUN export PKG_CONFIG_PATH=/usr/local/lib64/pkgconfig:/usr/local/lib64/pkgconfig && \
+    export Qt5_DIR=/opt/Qt/5.15.2/gcc_64 && \
+    export LD_LIBRARY_PATH=/usr/local/lib:/usr/local/lib64 && \
+    export PYTHONPATH=./bin/python/lib/python3.6/site-packages:/home/xstudio/.local
+
+RUN git clone https://github.com/AcademySoftwareFoundation/xstudio.git && \
+    export PKG_CONFIG_PATH=/usr/local/lib64/pkgconfig:/usr/local/lib64/pkgconfig && \
+    export Qt5_DIR=/opt/Qt/5.15.2/gcc_64 && \
+    export LD_LIBRARY_PATH=/usr/local/lib:/usr/local/lib64 && \
+    export PYTHONPATH=./bin/python/lib/python3.6/site-packages:/home/xstudio/.local/lib/python3.6/site-packages: && \
+    cd xstudio && \
+    mkdir build && \
+    cd build && \
+    cmake .. -DBUILD_DOCS=Off && \
+    make -j $(nproc)
+
+# RUN ./xstudio/build/bin/xstudio.bin
