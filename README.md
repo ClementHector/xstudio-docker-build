@@ -12,7 +12,8 @@ a Docker image and copies files from the container to the current directory.
 To use the script, run it with the following command:
 
 ``` bash
-/build.sh [centos7|rocky8|rocky9] [--qt-email|-m qt-email] [--qt-password|-pw qt-password] [--path|-p destination_path] [--version|-v xstudio_version]]
+/build.sh [centos7|rocky8|rocky9] [--qt-email|-m qt-email] [--qt-password|-pw qt-password]
+          [--path|-p destination_path] [--version|-v xstudio_version]]
 ```
 
 - The first argument is the choice of platform among `centos7`, `rockylinux8` and `rockylinux9`.
