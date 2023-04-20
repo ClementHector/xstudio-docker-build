@@ -1,25 +1,26 @@
 FROM rockylinux:8
 
-ARG QT_EMAIL=none
-ARG QT_PASSWORD=none
 
 # Distro installs
-RUN dnf update -y
 ## Add the RPM Fusion Repository
 RUN dnf install -y https://download.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
 RUN dnf install -y yum-utils
 RUN yum-config-manager --enable powertools
+RUN dnf update -y
 RUN dnf install -y --nogpgcheck https://mirrors.rpmfusion.org/free/el/rpmfusion-free-release-8.noarch.rpm
 RUN dnf install -y --nogpgcheck https://mirrors.rpmfusion.org/nonfree/el/rpmfusion-nonfree-release-8.noarch.rpm
 
 RUN dnf groupinstall -y "Development Tools"
-RUN dnf install -y git cmake python3-devel pulseaudio-libs-devel libjpeg-devel\
-    freeglut-devel opus-devel qt5-devel libuuid-devel alsa-lib-devel doxygen \
+RUN dnf install -y git python3-devel pulseaudio-libs-devel libjpeg-devel\
+    freeglut-devel opus-devel libuuid-devel alsa-lib-devel doxygen \
     python3-sphinx libvpx-devel openjpeg2-devel lame-devel
 RUN pip3 install sphinx_rtd_theme breathe opentimelineio
 
 # Local installs
 WORKDIR /usr/local/src
+
+# Install QT 5.15.2
+RUN dnf install -y qt5-qtbase qt5-devel
 
 # Install OpenSSL
 RUN curl -LO https://github.com/openssl/openssl/archive/refs/tags/OpenSSL_1_1_1s.tar.gz && \
@@ -37,33 +38,38 @@ RUN curl -LO https://github.com/Kitware/CMake/releases/download/v3.25.1/cmake-3.
     gmake -j $(nproc) && \
     gmake install
 
-# libGLEW
-RUN curl -LO  https://sourceforge.net/projects/glew/files/glew/2.1.0/glew-2.1.0.tgz && \
-    tar -xf glew-2.1.0.tgz && \
-    cd glew-2.1.0/ && \
-    make -j $(nproc) && \
-    make install
-
-# NLOHMANN JSON
-RUN curl -LO  https://github.com/nlohmann/json/archive/refs/tags/v3.7.3.tar.gz && \
-    tar -xf v3.7.3.tar.gz && \
+# Install nlohmann/json
+RUN curl -LO https://github.com/nlohmann/json/archive/refs/tags/v3.7.3.tar.gz && \
+    tar xf v3.7.3.tar.gz && \
     mkdir json-3.7.3/build && \
     cd json-3.7.3/build && \
     cmake .. -DJSON_BuildTests=Off && \
     make -j $(nproc) && \
-    make install
+    make install && \
+    rm -rf json-3.7.3 v3.7.3.tar.gz
 
-# OpenEXR
-RUN git clone https://github.com/AcademySoftwareFoundation/openexr.git && \
-    cd openexr/ && \
-    git checkout RB-3.1 && \
+# Install pybind11
+RUN curl -LO https://github.com/pybind/pybind11/archive/refs/tags/v2.6.2.tar.gz && \
+    tar xf v2.6.2.tar.gz && \
+    cd pybind11-2.6.2 && \
+    mkdir build && \
+    cd build && \
+    cmake .. && \
+    make -j $(nproc) && \
+    make install && \
+    rm -rf pybind11-2.6.2 v2.6.2.tar.gz
+
+# Install OpenEXR
+RUN curl -LO https://github.com/AcademySoftwareFoundation/openexr/archive/refs/tags/v3.1.6.tar.gz && \
+    tar xf v3.1.6.tar.gz && \
+    cd openexr-3.1.6 && \
     mkdir build && \
     cd build && \
     cmake .. -DOPENEXR_INSTALL_TOOLS=Off -DBUILD_TESTING=Off && \
     make -j $(nproc) && \
     make install
 
-# ActorFramework
+# Install ActorFramework
 RUN curl -LO  https://github.com/actor-framework/actor-framework/archive/refs/tags/0.18.4.tar.gz && \
     tar -xf 0.18.4.tar.gz && \
     cd actor-framework-0.18.4 && \
@@ -72,7 +78,7 @@ RUN curl -LO  https://github.com/actor-framework/actor-framework/archive/refs/ta
     make -j $(nproc) && \
     make install
 
-# OCIO2
+# Install OCIO2
 RUN curl -LO  https://github.com/AcademySoftwareFoundation/OpenColorIO/archive/refs/tags/v2.2.0.tar.gz && \
     tar -xf v2.2.0.tar.gz && \
     cd OpenColorIO-2.2.0/ && \
@@ -82,9 +88,16 @@ RUN curl -LO  https://github.com/AcademySoftwareFoundation/OpenColorIO/archive/r
     make -j $(nproc) && \
     make install
 
-# SPDLOG
-RUN curl -LO  https://github.com/gabime/spdlog/archive/refs/tags/v1.9.2.tar.gz && \
-    tar -xf v1.9.2.tar.gz && \
+# Install libGLEW
+RUN curl -LO https://sourceforge.net/projects/glew/files/glew/2.1.0/glew-2.1.0.tgz && \
+    tar -xf glew-2.1.0.tgz && \
+    cd glew-2.1.0/ && \
+    make -j $(nproc) && \
+    make install
+
+# Install spdlog
+RUN curl -LO https://github.com/gabime/spdlog/archive/refs/tags/v1.9.2.tar.gz && \
+    tar xf v1.9.2.tar.gz && \
     cd spdlog-1.9.2 && \
     mkdir build && \
     cd build && \
@@ -92,19 +105,19 @@ RUN curl -LO  https://github.com/gabime/spdlog/archive/refs/tags/v1.9.2.tar.gz &
     make -j $(nproc) && \
     make install
 
-# FMTLIB
-RUN curl -LO  https://github.com/fmtlib/fmt/archive/refs/tags/8.0.1.tar.gz && \
-    tar -xf 8.0.1.tar.gz && \
-    cd fmt-8.0.1/ && \
+# Install fmtlib
+RUN curl -LO https://github.com/fmtlib/fmt/archive/refs/tags/8.0.1.tar.gz && \
+    tar xf 8.0.1.tar.gz && \
+    cd fmt-8.0.1 && \
     mkdir build && \
     cd build && \
     cmake .. -DCMAKE_POSITION_INDEPENDENT_CODE=1 -DFMT_DOC=Off -DFMT_TEST=Off && \
     make -j $(nproc) && \
     make install
 
-# FFMPEG AND DEPS
-# NASM
-RUN curl -LO  https://www.nasm.us/pub/nasm/releasebuilds/2.15.05/nasm-2.15.05.tar.bz2 && \
+# Install FFMPEG AND DEPS
+# Install NASM
+RUN curl -LO https://www.nasm.us/pub/nasm/releasebuilds/2.15.05/nasm-2.15.05.tar.bz2 && \
     tar -xf nasm-2.15.05.tar.bz2 && \
     cd nasm-2.15.05 && \
     ./autogen.sh && \
@@ -112,58 +125,68 @@ RUN curl -LO  https://www.nasm.us/pub/nasm/releasebuilds/2.15.05/nasm-2.15.05.ta
     make -j $(nproc) && \
     make install
 
-# YASM
-RUN dnf install -y yasm
-# RUN curl -LO  https://www.tortall.net/projects/yasm/releases/yasm-1.3.0.tar.gz && \
-#     tar -xf yasm-1.3.0.tar.gz && \
-#     cd yasm-1.3.0  && \
-#     ./configure --prefix="$HOME/ffmpeg_build" --bindir="$HOME/bin"  && \
-#     make -j  $(nproc) && \
-#     make install
+# Install YASM
+# RUN dnf install -y yasm
+RUN curl -LO https://www.tortall.net/projects/yasm/releases/yasm-1.3.0.tar.gz && \
+    tar -xf yasm-1.3.0.tar.gz && \
+    cd yasm-1.3.0 && \
+    ./configure --prefix="$HOME/ffmpeg_build" --bindir="$HOME/bin" && \
+    make -j $(nproc) && \
+    make install
 
-# x264
+# Install x264
 RUN git clone --branch stable --depth 1 https://code.videolan.org/videolan/x264.git && \
     cd x264/ && \
     ./configure --enable-shared && \
-    make -j  $(nproc) && \
+    make -j $(nproc) && \
     make install
 
-# x265
-RUN curl -LO  https://bitbucket.org/multicoreware/x265_git/downloads/x265_3.5.tar.gz && \
+# Install x265
+RUN curl -LO https://bitbucket.org/multicoreware/x265_git/downloads/x265_3.5.tar.gz && \
     tar -xf x265_3.5.tar.gz && \
     cd x265_3.5/build/linux/ && \
     cmake -G "Unix Makefiles" ../../source && \
     make -j  $(nproc) && \
     make install
 
-# FDK-AAC
+# Install FDK-AAC
 RUN git clone --depth 1 https://github.com/mstorsjo/fdk-aac && \
     cd fdk-aac && \
     autoreconf -fiv && \
     ./configure && \
-    make -j  $(nproc) && \
+    make -j $(nproc) && \
     make install
 
-# FFMPEG
-RUN curl -LO  https://ffmpeg.org/releases/ffmpeg-5.1.tar.bz2 && \
+# Install FFMPEG
+RUN curl -LO https://ffmpeg.org/releases/ffmpeg-5.1.tar.bz2 && \
     tar -xf ffmpeg-5.1.tar.bz2 && \
     cd ffmpeg-5.1/ && \
     export PKG_CONFIG_PATH=/usr/local/lib/pkgconfig:$PKG_CONFIG_PATH && \
-    ./configure --extra-libs=-lpthread   --extra-libs=-lm    --enable-gpl   --enable-libfdk_aac   --enable-libfreetype   --enable-libmp3lame   --enable-libopus   --enable-libvpx   --enable-libx264   --enable-libx265 --enable-shared --enable-nonfree && \
-    make -j  $(nproc) && \
+    ./configure --extra-libs=-lpthread --extra-libs=-lm --enable-gpl --enable-libfdk_aac --enable-libfreetype --enable-libmp3lame --enable-libopus --enable-libvpx --enable-libx264 --enable-libx265 --enable-shared --enable-nonfree && \
+    make -j $(nproc) && \
     make install
 
-# xStudio
+# Install OpenSSL
+RUN curl -LO https://github.com/openssl/openssl/archive/refs/tags/OpenSSL_1_1_1b.tar.gz && \
+    tar xf OpenSSL_1_1_1b.tar.gz && \
+    cd openssl-OpenSSL_1_1_1b && \
+    ./config && \
+    make -j $(nproc) && \
+    make install
+
+# Build xStudio
 RUN git clone https://github.com/AcademySoftwareFoundation/xstudio.git && \
-    export PKG_CONFIG_PATH=/usr/local/lib64/pkgconfig:/usr/local/lib64/pkgconfig  && \
-    cd  xstudio && \
+    export PKG_CONFIG_PATH=/usr/local/lib64/pkgconfig:/usr/local/lib64/pkgconfig && \
+    export Qt5_DIR=/opt/Qt/5.15.2/gcc_64 && \
+    export LD_LIBRARY_PATH=/usr/local/lib:/usr/local/lib64 && \
+    export PYTHONPATH=./bin/python/lib/python3.6/site-packages:/home/xstudio/.local/lib/python3.6/site-packages: && \
+    cd xstudio && \
     mkdir build && \
     cd build && \
-    cmake .. -DBUILD_DOCS=Off  && \
+    cmake .. -DBUILD_DOCS=Off && \
     make -j $(nproc)
 
 # export QV4_FORCE_INTERPRETER=1
 # export LD_LIBRARY_PATH=/usr/local/lib:/usr/local/lib64
 # export PYTHONPATH=./bin/python/lib/python3.9/site-packages:/home/xstudio/.local/lib/python3.9/site-packages:
-
 # ./bin/xstudio.bin
